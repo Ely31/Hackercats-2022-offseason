@@ -14,10 +14,10 @@ public class PIDArmSystem {
     private DcMotor fourBar;
     private DcMotor turret;
 
-    public static PIDCoefficients liftCoefficients = new PIDCoefficients(0.1,0,0);
+    public static PIDCoefficients liftCoefficients = new PIDCoefficients(0.03,0.006,0.0018);
     public PIDFController liftController = new PIDFController(liftCoefficients);
 
-    public static PIDCoefficients turretCoefficients = new PIDCoefficients(0.1,0,0);
+    public static PIDCoefficients turretCoefficients = new PIDCoefficients(0.05,0.001,0.0038);
     public PIDFController turretController = new PIDFController(turretCoefficients);
 
     Utility utility = new Utility();
@@ -27,6 +27,7 @@ public class PIDArmSystem {
 
     private final double TURRET_TICKS_PER_REV = 384.5 * 5.3636; // *5.36 because of gear redection
     private final double TURRET_TICKS_PER_DEGREE = TURRET_TICKS_PER_REV/360.0;
+    private final double TURRET_MAX_POWER = 0.6;
 
     // Define the safe range of the 4b
     private double fourBarSafeRangeMin = 0; // This will be increased if the turret is rotated
@@ -42,7 +43,7 @@ public class PIDArmSystem {
     // Max speed of the turret
 
     // Positions of the 4b, in degrees from zero, of the 3 levels we want it to run to
-    public double level1 = 27;
+    public double level1 = 27.5;
     public double level2 = 54;
     public double level3 = 90;
 
@@ -85,14 +86,14 @@ public class PIDArmSystem {
 
     public void setFourBarAngle(double angle){// Converts angle input to ticks and runs the motor there after checking if it's safe
         updateFourBarMin();
-        liftController.setTargetPosition ((utility.clipValue(fourBarSafeRangeMin,FOURBAR_SAFERANGE_MAX, angle) * FOURBAR_TICKS_PER_DEGREE));
+        liftController.setTargetPosition (utility.clipValue(fourBarSafeRangeMin,FOURBAR_SAFERANGE_MAX, angle));
     }
 
     public void setTurretAngle(double angle){
         // Check if the fourbar is high enough and that the input angle is within the safe limit before moving
         turretTargetAngle = utility.clipValue(TURRET_SAFERANGE_MIN, TURRET_SAFERANGE_MAX, turretTargetAngle);
         if (TurretSafeToMove()) {
-            turretController.setTargetPosition ((utility.clipValue(TURRET_SAFERANGE_MIN, TURRET_SAFERANGE_MAX, angle)) * TURRET_TICKS_PER_DEGREE);
+            turretController.setTargetPosition (utility.clipValue(TURRET_SAFERANGE_MIN, TURRET_SAFERANGE_MAX, angle));
         }
     }
 
