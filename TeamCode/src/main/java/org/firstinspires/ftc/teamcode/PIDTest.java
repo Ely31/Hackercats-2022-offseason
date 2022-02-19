@@ -16,7 +16,7 @@ public class PIDTest extends LinearOpMode {
     final double COUNTS_PER_REV = 103.8;
 
     DcMotor carousel;
-    public static PIDCoefficients coeffs = new PIDCoefficients(5,0,0);
+    public static PIDCoefficients coeffs = new PIDCoefficients(5,0,0.8);
     PIDFController controller = new PIDFController(coeffs);
     double targetPos = 1;
     @Override
