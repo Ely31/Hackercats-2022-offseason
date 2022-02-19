@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.hardware;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 @Config
@@ -15,6 +14,7 @@ public class CarouselMech {
 
     public void init(HardwareMap hwmap){
         carousel = hwmap.get(DcMotor.class,"carousel");
+        carousel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
     }
 
     public void spinRotations(double rotations,double speed){ // Set the target pos to a number of rotations from the current pos
@@ -30,5 +30,12 @@ public class CarouselMech {
     public void setSpeed(float input){
         carousel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         carousel.setPower(input* MAX_SPEED);
+    }
+    public double findposition(){
+        return carousel.getCurrentPosition()/TICKS_PER_ROTATION;
+    }
+
+    public void setPower(double power){
+        carousel.setPower(power);
     }
 }
