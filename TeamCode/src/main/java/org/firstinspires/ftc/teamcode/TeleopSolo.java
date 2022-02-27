@@ -38,8 +38,9 @@ public class TeleopSolo extends LinearOpMode {
         RETRACTED
     }
     FourBarState fourBarState = FourBarState.RETRACTED;
-
     boolean capMechState = false; // True means extended, false means retracted
+
+    int side = AutoToTele.allianceSide;
 
     public static boolean debug = false;
 
@@ -120,7 +121,7 @@ public class TeleopSolo extends LinearOpMode {
             else capMech.closeGripper();
 
             // Carousel mech control
-            if (gamepad1.left_trigger > 0.1) carouselSpinner.setSpeed(1 * AutoToTele.allianceSide);
+            if (gamepad1.left_trigger > 0.1) carouselSpinner.setSpeed(1 *side);
             else carouselSpinner.setSpeed(0);
 
             if (debug) { // Send data to telemetry for debug purposes if we want to
@@ -131,6 +132,7 @@ public class TeleopSolo extends LinearOpMode {
                 telemetry.addData("turretpos", pidArmSystem.TurretAngle());
                 telemetry.addData("turret target", pidArmSystem.turretTargetAngle);
                 telemetry.addData("turret error", pidArmSystem.turretController.getLastError());
+                telemetry.addData("side", side);
                 telemetry.update();
             }
         }

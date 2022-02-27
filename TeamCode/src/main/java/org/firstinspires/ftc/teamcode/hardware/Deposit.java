@@ -12,9 +12,9 @@ public class Deposit {
     private Servo door;
 
     public static double PUSHER_HOME_POSITION = 0.05; // The retracted position of the pusher
-    double DOOR_HOME_POSITION = 0.1; // The closed position of the door
-    public static double PUSHER_PUSHING_POSITION = 0.47;
-    double DOOR_OPEN_POSITION = 0.6;
+    double DOOR_HOME_POSITION = 0.15; // The closed position of the door
+    public static double PUSHER_PUSHING_POSITION = 0.45;
+    double DOOR_OPEN_POSITION = 0.65;
 
     //time to wait before we close the door and reset
     // the pusher after the freight has fallen out
