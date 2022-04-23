@@ -1,27 +1,29 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.hardware.ArmSystem;
 import org.firstinspires.ftc.teamcode.hardware.CapMech;
 import org.firstinspires.ftc.teamcode.hardware.CarouselMech;
 import org.firstinspires.ftc.teamcode.hardware.Deposit;
 import org.firstinspires.ftc.teamcode.hardware.Intake;
+import org.firstinspires.ftc.teamcode.hardware.PIDArmSystem;
 import org.firstinspires.ftc.teamcode.hardware.TeleopDrive;
 import org.firstinspires.ftc.teamcode.util.TruePress;
 
 @Config
 @TeleOp
-public class TeleopRTP extends LinearOpMode {
+public class SlowTeleop extends LinearOpMode {
     // Pre-init
 
     TeleopDrive drive = new TeleopDrive();
     Intake intake = new Intake();
     Deposit deposit = new Deposit();
-    ArmSystem armSystem = new ArmSystem();
+    PIDArmSystem pidArmSystem = new PIDArmSystem();
     CarouselMech carouselSpinner = new CarouselMech();
     CapMech capMech = new CapMech();
 
@@ -34,7 +36,6 @@ public class TeleopRTP extends LinearOpMode {
         EXTENDED,
         RETRACTED
     }
-
     FourBarState fourBarState = FourBarState.RETRACTED;
 
     boolean capMechState = false; // True means extended, false means retracted
@@ -47,14 +48,15 @@ public class TeleopRTP extends LinearOpMode {
         drive.init(hardwareMap);
         intake.init(hardwareMap);
         deposit.init(hardwareMap);
-        armSystem.init(hardwareMap);
-        armSystem.retract();
+        pidArmSystem.init(hardwareMap);
+        pidArmSystem.retract();
         carouselSpinner.init(hardwareMap);
         capMech.init(hardwareMap);
 
         dumptime.reset();
-        sleep(200); // Hack to fix deposit firing if you init too quickly
+        sleep(100); // Hack to fix deposit firing if you init too quickly
 
+        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()); // Send stuff to dashboard to graph
         telemetry.addLine("Initialized");
         telemetry.update();
 
@@ -62,7 +64,7 @@ public class TeleopRTP extends LinearOpMode {
         // Pre-run
         while (opModeIsActive()) { // TeleOp loop
             // Mecdrive control
-            drive.driveFieldCentric(gamepad1.left_stick_x,gamepad1.left_stick_y,gamepad1.right_stick_x,gamepad1.right_trigger);
+            drive.driveFieldCentric(gamepad1.left_stick_x*0.5,gamepad1.left_stick_y*0.5,gamepad1.right_stick_x*0.5,gamepad1.right_trigger);
             if (gamepad1.back) drive.resetHeading(); // Reset field centric if needed
 
             // Intake control
@@ -76,21 +78,21 @@ public class TeleopRTP extends LinearOpMode {
             deposit.dump(dumptime);
 
             // Change active level of 4b
-            if (gamepad2.x) armSystem.activeLevel = 1;
-            else if (gamepad2.y) armSystem.activeLevel = 2;
-            else if (gamepad2.b) armSystem.activeLevel = 3;
+            if (gamepad2.x) pidArmSystem.activeLevel = 1;
+            else if (gamepad2.y) pidArmSystem.activeLevel = 2;
+            else if (gamepad2.b) pidArmSystem.activeLevel = 3;
 
             // Tune the height of the active 4b level to account for shipping hub inbalance
-            if (gamepad2.dpad_up) armSystem.editFourbarLevelOffset(0.4); // This number is small because it's added every loop
-            if (gamepad2.dpad_down) armSystem.editFourbarLevelOffset(-0.4);
+            if (gamepad2.dpad_up) pidArmSystem.editFourbarLevelOffset(0.4); // This number is small because it's added every loop
+            if (gamepad2.dpad_down) pidArmSystem.editFourbarLevelOffset(-0.4);
 
             // Four bar control
             switch (fourBarState) { // Gamepad2 A toggles the extended/retracted state of the 4b
                 case RETRACTED:
-                    armSystem.retract(); // Retract arm
+                    pidArmSystem.retract(); // Retract arm
                     // By default bring the turret to it's last position when extending,
                     // press the left stick to reset it to zero so it doesn't move when you extend
-                    if (gamepad2.left_stick_button) armSystem.turretTargetAngle = 0;
+                    if (gamepad2.left_stick_button) pidArmSystem.turretTargetAngle = 0;
 
                     if (fourbarToggleInput.trueInput(gamepad2.a)) { // Use A to switch states
                     fourBarState = FourBarState.EXTENDED;
@@ -98,16 +100,17 @@ public class TeleopRTP extends LinearOpMode {
                     break;
                 case EXTENDED:
                     // Run the 4b and turret to their desired positions
-                    armSystem.setArmPosition(armSystem.levelToAngle(armSystem.activeLevel), armSystem.turretTargetAngle);
-                    armSystem.turretTargetAngle += (gamepad2.left_trigger- gamepad2.right_trigger)*2;
+                    pidArmSystem.setArmPosition(pidArmSystem.levelToAngle(pidArmSystem.activeLevel), pidArmSystem.turretTargetAngle);
+                    pidArmSystem.turretTargetAngle += (gamepad2.left_trigger- gamepad2.right_trigger)*2.5;
 
-                    if (gamepad2.left_stick_button) armSystem.turretTargetAngle = 0;
+                    if (gamepad2.left_stick_button) pidArmSystem.turretTargetAngle = 0;
 
                     if (fourbarToggleInput.trueInput(gamepad2.a)) { // Use A to switch states
                         fourBarState = FourBarState.RETRACTED;
                     }
                     break;
             }
+            pidArmSystem.update(); // Call this every loop to run the pid controls
 
             // Cap mech control
             if (capMechToggleInput.trueInput(gamepad2.dpad_left)) capMechState = !capMechState; // Raise and lower with dpad left
@@ -124,13 +127,12 @@ public class TeleopRTP extends LinearOpMode {
 
             if (debug) { // Send data to telemetry for debug purposes if we want to
                 telemetry.addData("4b state", fourBarState);
-                telemetry.addData("4b pos", armSystem.FourbarAngle());
-                telemetry.addData("target level", armSystem.activeLevel);
-                telemetry.addData("turretpos", armSystem.TurretAngle());
-                telemetry.addData("turret target", armSystem.turretTargetAngle);
-                telemetry.addData("heading", -drive.heading);
-                telemetry.addData("proximity", intake.maxProximity());
-                telemetry.addData("intaken", intake.freightStatus());
+                telemetry.addData("4b pos", pidArmSystem.FourbarAngle());
+                telemetry.addData("4b target angle", pidArmSystem.levelToAngle(pidArmSystem.activeLevel));
+                telemetry.addData("4b error", pidArmSystem.liftController.getLastError());
+                telemetry.addData("turretpos", pidArmSystem.TurretAngle());
+                telemetry.addData("turret target", pidArmSystem.turretTargetAngle);
+                telemetry.addData("turret error", pidArmSystem.turretController.getLastError());
                 telemetry.update();
             }
         }
