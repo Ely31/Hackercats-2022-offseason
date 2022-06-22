@@ -30,13 +30,13 @@ public class MeepMeepTesting {
                                 .lineToSplineHeading(new Pose2d(-7.0, -45,Math.toRadians(-70)))
                                 .waitSeconds(1)
                                 .lineToSplineHeading(new Pose2d(0,-wallDistance,Math.toRadians(0)))
-                                .lineToSplineHeading(new Pose2d(40,-wallDistance, Math.toRadians(0)))
-                                .strafeLeft(26)
-                                .forward(18)
+                                .lineToSplineHeading(new Pose2d(36,-wallDistance, Math.toRadians(0)))
+                                .strafeLeft(20)
+                                .splineToSplineHeading(new Pose2d(63,-38, Math.toRadians(-90)), Math.toRadians(0))
                                 .build()
                 );
                 meepMeep
-                        .setBackground(MeepMeep.Background.FIELD_FREIGHTFRENZY_ADI_DARK)
+                        .setBackground(MeepMeep.Background.FIELD_FREIGHTFRENZY_OFFICIAL)
                         // Set theme
                         .setTheme(new ColorSchemeRedDark())
                         // Background opacity from 0-1

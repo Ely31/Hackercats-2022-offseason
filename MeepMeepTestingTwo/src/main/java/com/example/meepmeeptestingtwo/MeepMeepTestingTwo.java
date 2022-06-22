@@ -28,12 +28,12 @@ public class MeepMeepTestingTwo {
                         drive.trajectorySequenceBuilder(preloadDepositPos)
                                 .lineToSplineHeading(new Pose2d(2,-55, Math.toRadians(0)))
                                 .splineToConstantHeading(new Vector2d(30,startPos.getY()),0)
-                                .lineToSplineHeading(startPos)
+                                .lineTo(new Vector2d(40, -wallDistance))
                                 .build()
                 );
 
         meepMeep
-                .setBackground(MeepMeep.Background.FIELD_FREIGHTFRENZY_ADI_DARK)
+                .setBackground(MeepMeep.Background.FIELD_FREIGHTFRENZY_OFFICIAL)
                 // Set theme
                 .setTheme(new ColorSchemeRedDark())
                 // Background opacity from 0-1

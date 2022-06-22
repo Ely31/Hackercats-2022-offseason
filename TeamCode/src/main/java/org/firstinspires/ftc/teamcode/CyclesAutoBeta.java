@@ -175,11 +175,13 @@ public class CyclesAutoBeta extends LinearOpMode {
 
                // Cycle trajectory
                intoWarehouse = drive.trajectorySequenceBuilder(depositPreLoad.end())
+                       // Retract arm while driving away
                        .addTemporalMarker(0.5, () -> armSystem.retract())
-                       // Line up with wall
-                       .splineToSplineHeading(new Pose2d(12,-63*side,Math.toRadians(0*side)),Math.toRadians(0*side))
+                       // Spline into warehouse
+                       .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
+                       .splineToConstantHeading(new Vector2d(30,(-63*side)),Math.toRadians(0*side))
                        .addTemporalMarker(()-> intake.on())
-                       .lineTo(new Vector2d(39,-63*side)) // Go into warehouse
+                       .lineTo(new Vector2d(38,-63*side)) // Go into warehouse
                        .build();
 
                approachFreight = drive.trajectoryBuilder(intoWarehouse.end())
@@ -192,18 +194,18 @@ public class CyclesAutoBeta extends LinearOpMode {
                // Park trajectory
                if (deepPark) park = drive.trajectorySequenceBuilder(depositPreLoad.end())
                        .addTemporalMarker(0.7, () -> armSystem.setArmPosition(0,0))
-                       .lineToSplineHeading(new Pose2d(0, -((wallDistance+1)*side), Math.toRadians(0*side)))
                        .addTemporalMarker(0.5, () -> armSystem.setArmPosition(0,0))
-                       .lineToSplineHeading(new Pose2d(37, -(wallDistance+1)*side, Math.toRadians(0*side))) // Go into warehouse
-                       .lineTo(new Vector2d(36,(-(originToWall-34))*side))
-                       .lineToSplineHeading(new Pose2d(63,-(originToWall-32.5)*side,Math.toRadians(-90*side)))
+                       .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
+                       .splineToConstantHeading(new Vector2d(36,(-63*side)),Math.toRadians(0*side))
+                       .lineTo(new Vector2d(36,(-44*side)))
+                       .splineToSplineHeading(new Pose2d(63,(-37*side), Math.toRadians(-90*side)), Math.toRadians(0*side))
                        .build();
                else {
                    park = drive.trajectorySequenceBuilder(depositPreLoad.end())
                            .addTemporalMarker(0.7, () -> armSystem.retract())
-                           .splineToSplineHeading(new Pose2d(12, -wallDistance * side, Math.toRadians(0 * side)), Math.toRadians(0))
                            .addTemporalMarker(0.5, () -> armSystem.setArmPosition(0, 0))
-                           .lineToSplineHeading(new Pose2d(43, -wallDistance * side, Math.toRadians(0 * side))) // Go into warehouse
+                           .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
+                           .splineToConstantHeading(new Vector2d(36,(-63*side)),Math.toRadians(0*side))
                            .build();
                }
                // Telemetry
