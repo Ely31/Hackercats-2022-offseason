@@ -10,7 +10,7 @@ public class CarouselMech {
     private DcMotor carousel;
 
     private final double TICKS_PER_ROTATION = 103.8;
-    public static double MAX_SPEED = 0.20;
+    public double MAX_SPEED = 0.20;
 
     public void init(HardwareMap hwmap){
         carousel = hwmap.get(DcMotor.class,"carousel");

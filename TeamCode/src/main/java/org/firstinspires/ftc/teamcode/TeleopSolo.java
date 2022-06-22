@@ -25,7 +25,7 @@ public class TeleopSolo extends LinearOpMode {
     Intake intake = new Intake();
     Deposit deposit = new Deposit();
     PIDArmSystem pidArmSystem = new PIDArmSystem();
-    CarouselMech carouselSpinner = new CarouselMech();
+    CarouselMech carouselMech = new CarouselMech();
     CapMech capMech = new CapMech();
 
     TruePress fourbarToggleInput = new TruePress();
@@ -38,7 +38,13 @@ public class TeleopSolo extends LinearOpMode {
         RETRACTED
     }
     FourBarState fourBarState = FourBarState.RETRACTED;
-    boolean capMechState = false; // True means extended, false means retracted
+    boolean capMechState = false; // True means extended, false means retracted\
+    enum CarouselState {
+        RUNNING,
+        STOPPED
+    }
+    CarouselState carouselState = CarouselState.STOPPED;
+    ElapsedTime carouselRampTimer = new ElapsedTime();
 
     int side = AutoToTele.allianceSide;
 
@@ -52,7 +58,7 @@ public class TeleopSolo extends LinearOpMode {
         deposit.init(hardwareMap);
         pidArmSystem.init(hardwareMap);
         pidArmSystem.retract();
-        carouselSpinner.init(hardwareMap);
+        carouselMech.init(hardwareMap);
         capMech.init(hardwareMap);
 
         dumptime.reset();
@@ -121,8 +127,24 @@ public class TeleopSolo extends LinearOpMode {
             else capMech.closeGripper();
 
             // Carousel mech control
-            if (gamepad1.left_trigger > 0.1) carouselSpinner.setSpeed(1 *side);
-            else carouselSpinner.setSpeed(0);
+            // If you're pressing the trigger, set the state to running
+            // If not, set it to stopped
+            if (gamepad1.left_trigger > 0.1) carouselState = CarouselState.RUNNING;
+            else carouselState = CarouselState.STOPPED;
+
+            // fsm and non blocking timers go brrr
+            switch (carouselState){
+                case RUNNING:
+                    if (carouselRampTimer.milliseconds() > 100) { // Increase the max speed every 100ms
+                        carouselMech.MAX_SPEED += 0.5;
+                        carouselRampTimer.reset();
+                    }
+                    carouselMech.setSpeed(gamepad1.left_trigger); // The setSpeed method multiplies input by the max speed
+                    break;
+                case STOPPED:
+                    carouselMech.MAX_SPEED = 0.20; // Reset max speed to normal after the trigger is released
+                    carouselRampTimer.reset();
+            }
 
             if (debug) { // Send data to telemetry for debug purposes if we want to
                 telemetry.addData("4b state", fourBarState);
@@ -133,6 +155,7 @@ public class TeleopSolo extends LinearOpMode {
                 telemetry.addData("turret target", pidArmSystem.turretTargetAngle);
                 telemetry.addData("turret error", pidArmSystem.turretController.getLastError());
                 telemetry.addData("side", side);
+                telemetry.addData("carousel max speed", carouselMech.MAX_SPEED);
                 telemetry.update();
             }
         }
