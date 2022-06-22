@@ -66,6 +66,12 @@ public class Intake {
     }
 
     public boolean freightStatus(){
-        return !(350 < maxProximity() && maxProximity() < 450);
+        double maxProximity = maxProximity(); // So we don't make two i2c calls
+        return !(325 < maxProximity && maxProximity < 450);
+    }
+
+    public boolean isEmpty(){
+        double maxProximity = maxProximity(); // So we don't make two i2c calls
+        return (325 < maxProximity && maxProximity < 380);
     }
 }

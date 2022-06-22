@@ -20,7 +20,7 @@ import org.firstinspires.ftc.teamcode.util.AutoToTele;
 import org.firstinspires.ftc.teamcode.vision.SkystoneStyleThreshold;
 
 @Autonomous
-public class CyclesAuto extends LinearOpMode {
+public class CyclesAutoBeta extends LinearOpMode {
     // Pre-init
     Camera webcam  = new Camera();
     SkystoneStyleThreshold pipeline = new SkystoneStyleThreshold();
@@ -223,13 +223,13 @@ public class CyclesAuto extends LinearOpMode {
             capMech.levelArm();
             drive.followTrajectorySequence(pickUpTSE);
             capMech.closeGripper();
-            sleep(400);
+            sleep(250); // Wait for gripper to close
             capMech.retract();
             armSystem.runToLevel(hubActiveLevel); // Extend 4b before driving
             drive.followTrajectory(depositPreLoad); // Drive to spot where we'll deposit from
             depositTimer.reset();
             deposit.dump(depositTimer); // Dump
-            sleep(350); // Wait for that dump to finish
+            sleep(310); // Wait for that dump to finish
             deposit.dump(depositTimer);
             intake.dropIntake();
             drive.followTrajectorySequence(intoWarehouse);
@@ -248,23 +248,17 @@ public class CyclesAuto extends LinearOpMode {
                     .addTemporalMarker(()-> intake.off())
                     // Go to shipping hub
                     .splineToSplineHeading(new Pose2d(-2, -42*side, Math.toRadians(-60*side)),Math.toRadians(120*side),
-                            SampleMecanumDrive.getVelocityConstraint(35, DriveConstants.MAX_ANG_VEL,DriveConstants.TRACK_WIDTH),
+                            SampleMecanumDrive.getVelocityConstraint(40, DriveConstants.MAX_ANG_VEL,DriveConstants.TRACK_WIDTH),
                             SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
                     .addTemporalMarker(()->{ // Dump it
                         depositTimer.reset();
                         deposit.dump(depositTimer);
                     })
-                    .waitSeconds(0.35)
+                    .waitSeconds(0.31)
                     .addTemporalMarker(()->deposit.dump(depositTimer))
                     .build();
 
             drive.followTrajectorySequence(outAndDeposit);
-            // Deposit again so if we accidentally grab 2 freight we offset the penalty (lol it's actually a major)
-            sleep(1000);
-            depositTimer.reset();
-            deposit.dump(depositTimer);
-            sleep(350);
-            deposit.dump(depositTimer);
 
             drive.followTrajectorySequence(park); // Park in warehouse
 

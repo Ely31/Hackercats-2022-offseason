@@ -14,11 +14,10 @@ public class MeepMeepTestingTwo {
 
     static Pose2d startPos = new Pose2d(40,-(wallDistance), Math.toRadians(0));
 
-    static Pose2d preloadDepositPos = new Pose2d(0,-38,Math.toRadians(-45));
+    static Pose2d preloadDepositPos = new Pose2d(-2,-42,Math.toRadians(-60));
 
     public static void main(String[] args) {
         // Declare a MeepMeep instance
-        // With a field size of 700 pixels at 50 fps
         MeepMeep meepMeep = new MeepMeep(740,60);
 
         RoadRunnerBotEntity bot = new DefaultBotBuilder(meepMeep) // Create a bot
@@ -26,11 +25,9 @@ public class MeepMeepTestingTwo {
                 .setConstraints(55, 30, Math.toRadians(167), Math.toRadians(167), 11)
                 // The path we are simulating
                 .followTrajectorySequence(drive ->
-                        drive.trajectorySequenceBuilder(startPos)
-                                .lineToSplineHeading(new Pose2d(20,startPos.getY(),0))
-                                .splineToSplineHeading(preloadDepositPos,Math.toRadians(120))
-                                .waitSeconds(1)
-                                .splineToSplineHeading(new Pose2d(20,startPos.getY(),0),0)
+                        drive.trajectorySequenceBuilder(preloadDepositPos)
+                                .lineToSplineHeading(new Pose2d(2,-55, Math.toRadians(0)))
+                                .splineToConstantHeading(new Vector2d(30,startPos.getY()),0)
                                 .lineToSplineHeading(startPos)
                                 .build()
                 );

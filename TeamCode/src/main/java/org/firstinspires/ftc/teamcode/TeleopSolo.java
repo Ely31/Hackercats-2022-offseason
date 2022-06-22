@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -20,7 +21,6 @@ import org.firstinspires.ftc.teamcode.util.TruePress;
 @TeleOp
 public class TeleopSolo extends LinearOpMode {
     // Pre-init
-
     TeleopDrive drive = new TeleopDrive();
     Intake intake = new Intake();
     Deposit deposit = new Deposit();
@@ -38,21 +38,26 @@ public class TeleopSolo extends LinearOpMode {
         RETRACTED
     }
     FourBarState fourBarState = FourBarState.RETRACTED;
-    boolean capMechState = false; // True means extended, false means retracted\
+
     enum CarouselState {
         RUNNING,
         STOPPED
     }
     CarouselState carouselState = CarouselState.STOPPED;
-    ElapsedTime carouselRampTimer = new ElapsedTime();
+    ElapsedTime carouselAccelTimer = new ElapsedTime();
+    public static double carouselAccelRate = 0.015;
+
+    boolean capMechState = false; // True means extended, false means retracted
 
     int side = AutoToTele.allianceSide;
 
     public static boolean debug = false;
+    ElapsedTime loopTimer = new ElapsedTime();
 
     @Override
     public void runOpMode() {
         // Init
+        dumptime.reset();
         drive.init(hardwareMap);
         intake.init(hardwareMap);
         deposit.init(hardwareMap);
@@ -61,7 +66,11 @@ public class TeleopSolo extends LinearOpMode {
         carouselMech.init(hardwareMap);
         capMech.init(hardwareMap);
 
-        dumptime.reset();
+        // Enable bulk reads
+        for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
+            module.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
+
         sleep(100); // Hack to fix deposit firing if you init too quickly
 
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry()); // Send stuff to dashboard to graph
@@ -70,6 +79,9 @@ public class TeleopSolo extends LinearOpMode {
 
         waitForStart();
         // Pre-run
+        loopTimer.reset();
+        carouselAccelTimer.reset();
+
         while (opModeIsActive()) { // TeleOp loop
             // Mecdrive control
             drive.driveFieldCentric(gamepad1.left_stick_x,gamepad1.left_stick_y,gamepad1.right_stick_x,gamepad1.right_trigger);
@@ -132,18 +144,19 @@ public class TeleopSolo extends LinearOpMode {
             if (gamepad1.left_trigger > 0.1) carouselState = CarouselState.RUNNING;
             else carouselState = CarouselState.STOPPED;
 
-            // fsm and non blocking timers go brrr
+            // Fsm and non blocking timers go brrr
             switch (carouselState){
                 case RUNNING:
-                    if (carouselRampTimer.milliseconds() > 100) { // Increase the max speed every 100ms
-                        carouselMech.MAX_SPEED += 0.5;
-                        carouselRampTimer.reset();
+                    if (carouselAccelTimer.milliseconds() > 100) { // Increase the max speed every 100ms
+                        carouselMech.MAX_SPEED += carouselAccelRate;
+                        carouselAccelTimer.reset();
                     }
                     carouselMech.setSpeed(gamepad1.left_trigger); // The setSpeed method multiplies input by the max speed
                     break;
                 case STOPPED:
                     carouselMech.MAX_SPEED = 0.20; // Reset max speed to normal after the trigger is released
-                    carouselRampTimer.reset();
+                    carouselMech.setSpeed(0);
+                    carouselAccelTimer.reset();
             }
 
             if (debug) { // Send data to telemetry for debug purposes if we want to
@@ -156,8 +169,10 @@ public class TeleopSolo extends LinearOpMode {
                 telemetry.addData("turret error", pidArmSystem.turretController.getLastError());
                 telemetry.addData("side", side);
                 telemetry.addData("carousel max speed", carouselMech.MAX_SPEED);
+                telemetry.addData("last loop time", loopTimer.milliseconds());
                 telemetry.update();
             }
+            loopTimer.reset();
         }
     }
 }
