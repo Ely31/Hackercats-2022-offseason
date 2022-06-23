@@ -1,15 +1,20 @@
 package org.firstinspires.ftc.teamcode;
 
+import androidx.annotation.NonNull;
+
 import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.drive.DriveConstants;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.drive.SampleMecanumDriveCancelable;
 import org.firstinspires.ftc.teamcode.hardware.ArmSystem;
 import org.firstinspires.ftc.teamcode.hardware.Camera;
 import org.firstinspires.ftc.teamcode.hardware.CapMech;
@@ -19,12 +24,13 @@ import org.firstinspires.ftc.teamcode.trajectorysequence.TrajectorySequence;
 import org.firstinspires.ftc.teamcode.util.AutoToTele;
 import org.firstinspires.ftc.teamcode.vision.SkystoneStyleThreshold;
 
+@Config
 @Autonomous
 public class CyclesAutoBeta extends LinearOpMode {
     // Pre-init
     Camera webcam  = new Camera();
     SkystoneStyleThreshold pipeline = new SkystoneStyleThreshold();
-    SampleMecanumDrive drive;
+    SampleMecanumDriveCancelable drive;
     ArmSystem armSystem = new ArmSystem();
     Deposit deposit = new Deposit();
     Intake intake = new Intake();
@@ -54,12 +60,15 @@ public class CyclesAutoBeta extends LinearOpMode {
     TrajectorySequence outAndDeposit;
     TrajectorySequence park;
 
+    public static boolean extraCycle = true;
+    ElapsedTime approachFreightTimeout = new ElapsedTime();
+
     @Override
     public void runOpMode() {
         // Init
         webcam.init(hardwareMap);
         webcam.webcam.setPipeline(pipeline);
-        drive = new SampleMecanumDrive(hardwareMap);
+        drive = new SampleMecanumDriveCancelable(hardwareMap);
         drive.setPoseEstimate(startPos);
         armSystem.init(hardwareMap);
         armSystem.setArmPosition(0,0);
@@ -181,7 +190,7 @@ public class CyclesAutoBeta extends LinearOpMode {
                        .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
                        .splineToConstantHeading(new Vector2d(30,(-63*side)),Math.toRadians(0*side))
                        .addTemporalMarker(()-> intake.on())
-                       .lineTo(new Vector2d(38,-63*side)) // Go into warehouse
+                       .lineTo(new Vector2d(36.5,-63*side)) // Go into warehouse
                        .build();
 
                approachFreight = drive.trajectoryBuilder(intoWarehouse.end())
@@ -193,18 +202,28 @@ public class CyclesAutoBeta extends LinearOpMode {
 
                // Park trajectory
                if (deepPark) park = drive.trajectorySequenceBuilder(depositPreLoad.end())
+                       // Lower arm while driving
+                       .setVelConstraint(SampleMecanumDriveCancelable.getVelocityConstraint(35, DriveConstants.MAX_ANG_VEL,DriveConstants.TRACK_WIDTH))
                        .addTemporalMarker(0.7, () -> armSystem.setArmPosition(0,0))
                        .addTemporalMarker(0.5, () -> armSystem.setArmPosition(0,0))
+                       // Back off hub
                        .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
-                       .splineToConstantHeading(new Vector2d(36,(-63*side)),Math.toRadians(0*side))
-                       .lineTo(new Vector2d(36,(-44*side)))
+                       // Spline into warehouse
+                       .splineToConstantHeading(new Vector2d(29,(-63*side)),Math.toRadians(0*side))
+                       // Move toward shared hub a bit slower to prevent slipping
+                       .splineToConstantHeading(new Vector2d(37,(-44*side)), Math.toRadians(90*side),
+                               SampleMecanumDriveCancelable.getVelocityConstraint(30,Math.toRadians(120), 11),
+                               SampleMecanumDriveCancelable.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
+                       // Park
                        .splineToSplineHeading(new Pose2d(63,(-37*side), Math.toRadians(-90*side)), Math.toRadians(0*side))
                        .build();
                else {
                    park = drive.trajectorySequenceBuilder(depositPreLoad.end())
                            .addTemporalMarker(0.7, () -> armSystem.retract())
                            .addTemporalMarker(0.5, () -> armSystem.setArmPosition(0, 0))
+                           // Back off hub
                            .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
+                           // Slip into warehouse
                            .splineToConstantHeading(new Vector2d(36,(-63*side)),Math.toRadians(0*side))
                            .build();
                }
@@ -220,10 +239,9 @@ public class CyclesAutoBeta extends LinearOpMode {
     
         if (opModeIsActive()) {
             // Autonomous instructions
-
             capMech.openGripper();
             capMech.levelArm();
-            drive.followTrajectorySequence(pickUpTSE);
+            drive.followTrajectorySequence(pickUpTSE); // Drive to tse
             capMech.closeGripper();
             sleep(250); // Wait for gripper to close
             capMech.retract();
@@ -234,12 +252,18 @@ public class CyclesAutoBeta extends LinearOpMode {
             sleep(310); // Wait for that dump to finish
             deposit.dump(depositTimer);
             intake.dropIntake();
+
             drive.followTrajectorySequence(intoWarehouse);
 
             drive.followTrajectoryAsync(approachFreight); // Follow async
-            while (intake.isEmpty()){
+            approachFreightTimeout.reset();
+            // Stop the trajectory if it hasn't found a freight in 3 seconds
+            while (intake.isEmpty() && (approachFreightTimeout.milliseconds() < 3000)){
                 drive.update();
             }
+            // Copied from the lrr cancel trajectory sample
+            drive.breakFollowing();
+            drive.setDrivePower(new Pose2d());
             // After we detect a freight and the traj ends, go out and score it
             outAndDeposit = drive.trajectorySequenceBuilder(drive.getPoseEstimate())
                     .waitSeconds(0.5)
@@ -261,6 +285,48 @@ public class CyclesAutoBeta extends LinearOpMode {
                     .build();
 
             drive.followTrajectorySequence(outAndDeposit);
+
+            if (extraCycle) {
+                drive.followTrajectorySequence(intoWarehouse);
+
+                // Update approach freight
+                approachFreight = drive.trajectoryBuilder(intoWarehouse.end())
+                        // Creep forward slowly
+                        .forward(20,
+                                SampleMecanumDrive.getVelocityConstraint(5, DriveConstants.MAX_ANG_VEL,DriveConstants.TRACK_WIDTH),
+                                SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
+                        .build();
+
+                drive.followTrajectoryAsync(approachFreight); // Follow async
+                approachFreightTimeout.reset();
+                while (intake.isEmpty() &&(approachFreightTimeout.milliseconds() < 3000)){
+                    drive.update();
+                }
+                // Copied from the lrr cancel trajectory sample
+                drive.breakFollowing();
+                drive.setDrivePower(new Pose2d());
+                // After we detect a freight and the traj ends, go out and score it
+                outAndDeposit = drive.trajectorySequenceBuilder(drive.getPoseEstimate())
+                        .waitSeconds(0.5)
+                        .addTemporalMarker(()->intake.off())
+                        .addTemporalMarker(0.8,()-> intake.on())
+                        .lineTo(new Vector2d(10,-63*side)) // Go out of warehouse
+                        .addTemporalMarker(()-> armSystem.runToLevel(3))
+                        .addTemporalMarker(()-> intake.off())
+                        // Go to shipping hub
+                        .splineToSplineHeading(new Pose2d(-2, -42*side, Math.toRadians(-60*side)),Math.toRadians(120*side),
+                                SampleMecanumDrive.getVelocityConstraint(40, DriveConstants.MAX_ANG_VEL,DriveConstants.TRACK_WIDTH),
+                                SampleMecanumDrive.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
+                        .addTemporalMarker(()->{ // Dump it
+                            depositTimer.reset();
+                            deposit.dump(depositTimer);
+                        })
+                        .waitSeconds(0.31)
+                        .addTemporalMarker(()->deposit.dump(depositTimer))
+                        .build();
+
+                drive.followTrajectorySequence(outAndDeposit);
+            }
 
             drive.followTrajectorySequence(park); // Park in warehouse
 

@@ -31,7 +31,7 @@ public class TeleopSolo extends LinearOpMode {
     TruePress fourbarToggleInput = new TruePress();
     TruePress capMechToggleInput = new TruePress();
 
-    ElapsedTime dumptime = new ElapsedTime();
+    ElapsedTime dumptime = new ElapsedTime(300);
 
     enum FourBarState {
         EXTENDED,

@@ -6,6 +6,7 @@ import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.noahbres.meepmeep.MeepMeep;
 import com.noahbres.meepmeep.core.colorscheme.scheme.ColorSchemeRedDark;
 import com.noahbres.meepmeep.roadrunner.DefaultBotBuilder;
+import com.noahbres.meepmeep.roadrunner.SampleMecanumDrive;
 import com.noahbres.meepmeep.roadrunner.entity.RoadRunnerBotEntity;
 
 public class MeepMeepTesting {
@@ -14,6 +15,7 @@ public class MeepMeepTesting {
     static double wallDistance = originToWall - 6.5; // Center of bot is 6.5in from wall
 
     static Pose2d startPos = new Pose2d(11.4,-(originToWall-9), Math.toRadians(-90));
+    static Pose2d preloadDepositPos = new Pose2d(-2,-42,Math.toRadians(-60));
 
     public static void main(String[] args) {
         // Declare a MeepMeep instance
@@ -26,13 +28,12 @@ public class MeepMeepTesting {
 
                 // The path we are simulating
                 .followTrajectorySequence(drive ->
-                        drive.trajectorySequenceBuilder(startPos)
-                                .lineToSplineHeading(new Pose2d(-7.0, -45,Math.toRadians(-70)))
-                                .waitSeconds(1)
-                                .lineToSplineHeading(new Pose2d(0,-wallDistance,Math.toRadians(0)))
-                                .lineToSplineHeading(new Pose2d(36,-wallDistance, Math.toRadians(0)))
-                                .strafeLeft(20)
-                                .splineToSplineHeading(new Pose2d(63,-38, Math.toRadians(-90)), Math.toRadians(0))
+                        drive.trajectorySequenceBuilder(preloadDepositPos)
+                                .lineToSplineHeading(new Pose2d(2,-55, Math.toRadians(0)))
+                                .splineToConstantHeading(new Vector2d(32,-63),0)// Move through gap
+                                // Move toward shared hub, this one is slowed down to prevent slipping
+                                .splineToConstantHeading(new Vector2d(37,-44), Math.toRadians(90), SampleMecanumDrive.getVelocityConstraint(30,Math.toRadians(120),11))
+                                .splineToSplineHeading(new Pose2d(63,-37, Math.toRadians(-90)), Math.toRadians(0)) // Park
                                 .build()
                 );
                 meepMeep
