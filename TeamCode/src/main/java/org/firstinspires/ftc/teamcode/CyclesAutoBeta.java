@@ -94,6 +94,9 @@ public class CyclesAutoBeta extends LinearOpMode {
             if (gamepad1.dpad_up) deepPark = true;
             if (gamepad1.dpad_down) deepPark = false;
 
+            if (gamepad1.dpad_left) extraCycle = false;
+            if (gamepad1.dpad_right) extraCycle = true;
+
             side = AutoToTele.allianceSide;
             switch (side) {
                 case 1:
@@ -105,7 +108,9 @@ public class CyclesAutoBeta extends LinearOpMode {
             }
             telemetry.addData("going to level", hubActiveLevel);
             telemetry.addData("deepPark", deepPark);
-            telemetry.addData("freight status", intake.freightStatus());
+            telemetry.addData("extra cycle", extraCycle);
+            telemetry.addLine("change deep park with dpad up/down, and change extra cycle with dpad left/right");
+            telemetry.addLine("MAKE SURE that the ALLIANCE and LEVEL are correct before running");
             telemetry.update();
 
            if (pipelineThrottle.milliseconds() > 1000) {// Throttle loop times to 1 second
@@ -188,9 +193,9 @@ public class CyclesAutoBeta extends LinearOpMode {
                        .addTemporalMarker(0.5, () -> armSystem.retract())
                        // Spline into warehouse
                        .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
-                       .splineToConstantHeading(new Vector2d(30,(-63*side)),Math.toRadians(0*side))
+                       .splineToConstantHeading(new Vector2d(30,(-63.5*side)),Math.toRadians(0*side))
                        .addTemporalMarker(()-> intake.on())
-                       .lineTo(new Vector2d(36.5,-63*side)) // Go into warehouse
+                       .lineTo(new Vector2d(36.5,-63.5*side)) // Go into warehouse
                        .build();
 
                approachFreight = drive.trajectoryBuilder(intoWarehouse.end())
@@ -209,13 +214,13 @@ public class CyclesAutoBeta extends LinearOpMode {
                        // Back off hub
                        .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
                        // Spline into warehouse
-                       .splineToConstantHeading(new Vector2d(29,(-63*side)),Math.toRadians(0*side))
+                       .splineToConstantHeading(new Vector2d(29,(-63.5*side)),Math.toRadians(0*side))
                        // Move toward shared hub a bit slower to prevent slipping
                        .splineToConstantHeading(new Vector2d(37,(-44*side)), Math.toRadians(90*side),
                                SampleMecanumDriveCancelable.getVelocityConstraint(30,Math.toRadians(120), 11),
                                SampleMecanumDriveCancelable.getAccelerationConstraint(DriveConstants.MAX_ACCEL))
                        // Park
-                       .splineToSplineHeading(new Pose2d(63,(-37*side), Math.toRadians(-90*side)), Math.toRadians(0*side))
+                       .splineToSplineHeading(new Pose2d(63.5,(-38.5*side), Math.toRadians(-90*side)), Math.toRadians(0*side))
                        .build();
                else {
                    park = drive.trajectorySequenceBuilder(depositPreLoad.end())
@@ -224,7 +229,7 @@ public class CyclesAutoBeta extends LinearOpMode {
                            // Back off hub
                            .lineToSplineHeading(new Pose2d(2,(-55*side), Math.toRadians(0*side)))
                            // Slip into warehouse
-                           .splineToConstantHeading(new Vector2d(36,(-63*side)),Math.toRadians(0*side))
+                           .splineToConstantHeading(new Vector2d(36,(-63.5*side)),Math.toRadians(0*side))
                            .build();
                }
                // Telemetry
@@ -266,10 +271,10 @@ public class CyclesAutoBeta extends LinearOpMode {
             drive.setDrivePower(new Pose2d());
             // After we detect a freight and the traj ends, go out and score it
             outAndDeposit = drive.trajectorySequenceBuilder(drive.getPoseEstimate())
-                    .waitSeconds(0.5)
+                    .waitSeconds(0.4)
                     .addTemporalMarker(()->intake.off())
-                    .addTemporalMarker(0.8,()-> intake.on())
-                    .lineTo(new Vector2d(10,-63*side)) // Go out of warehouse
+                    .addTemporalMarker(0.9,()-> intake.on())
+                    .lineTo(new Vector2d(10,-63.5*side)) // Go out of warehouse
                     .addTemporalMarker(()-> armSystem.runToLevel(3))
                     .addTemporalMarker(()-> intake.off())
                     // Go to shipping hub
@@ -280,7 +285,7 @@ public class CyclesAutoBeta extends LinearOpMode {
                         depositTimer.reset();
                         deposit.dump(depositTimer);
                     })
-                    .waitSeconds(0.31)
+                    .waitSeconds(0.32)
                     .addTemporalMarker(()->deposit.dump(depositTimer))
                     .build();
 
@@ -307,10 +312,10 @@ public class CyclesAutoBeta extends LinearOpMode {
                 drive.setDrivePower(new Pose2d());
                 // After we detect a freight and the traj ends, go out and score it
                 outAndDeposit = drive.trajectorySequenceBuilder(drive.getPoseEstimate())
-                        .waitSeconds(0.5)
+                        .waitSeconds(0.4)
                         .addTemporalMarker(()->intake.off())
-                        .addTemporalMarker(0.8,()-> intake.on())
-                        .lineTo(new Vector2d(10,-63*side)) // Go out of warehouse
+                        .addTemporalMarker(0.9,()-> intake.on())
+                        .lineTo(new Vector2d(10,-63.5*side)) // Go out of warehouse
                         .addTemporalMarker(()-> armSystem.runToLevel(3))
                         .addTemporalMarker(()-> intake.off())
                         // Go to shipping hub
@@ -321,7 +326,7 @@ public class CyclesAutoBeta extends LinearOpMode {
                             depositTimer.reset();
                             deposit.dump(depositTimer);
                         })
-                        .waitSeconds(0.31)
+                        .waitSeconds(0.32)
                         .addTemporalMarker(()->deposit.dump(depositTimer))
                         .build();
 
