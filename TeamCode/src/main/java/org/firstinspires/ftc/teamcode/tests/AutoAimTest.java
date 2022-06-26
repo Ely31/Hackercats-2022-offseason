@@ -22,7 +22,7 @@ public class AutoAimTest extends LinearOpMode {
     PIDArmSystem armSystem = new PIDArmSystem();
 
     double targetAngle = 0;
-    public static double p = 0.001;
+    public static double p = 0.01; // P component in the P controller for the turret
 
     ElapsedTime looptimer;
     @Override

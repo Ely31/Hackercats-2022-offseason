@@ -43,7 +43,7 @@ public class AutoAimPipeline extends OpenCvPipeline {
 
     private double bestEllipseScore = 100; // Set it really high to start so that it will actually update to things the pipeline finds
     // And also set the best ellipse to something really bad for the same reason
-    public RotatedRect bestEllipse = new RotatedRect(new Point(20,30), new Size(10,50),0);
+    public RotatedRect bestEllipse = new RotatedRect(new Point(0,0), new Size(5,50),0);
     public RotatedRect lastRealBestEllipse = new RotatedRect();
 
     @Override
@@ -52,11 +52,14 @@ public class AutoAimPipeline extends OpenCvPipeline {
         resetBestEllipse();
         bestEllipseScore = 100;
 
-        Imgproc.blur(input, processedMat, new Size(2,2)); // Blur to get rid of noise
-        outputMat = processedMat.clone();
-        Imgproc.cvtColor(processedMat, processedMat, Imgproc.COLOR_RGB2YCrCb); // Convert to YCrCb color space
-        Core.inRange(processedMat, lower,upper, processedMat); // Threshold
-        thresholdedMat = processedMat.clone();
+        // Blur to get rid of noise
+        Imgproc.blur(input, processedMat, new Size(2,2));
+        processedMat.copyTo(outputMat);
+        // Convert to YCrCb color space
+        Imgproc.cvtColor(processedMat, processedMat, Imgproc.COLOR_RGB2YCrCb);
+        // Threshold
+        Core.inRange(processedMat, lower,upper, processedMat);
+        processedMat.copyTo(thresholdedMat);
         // Find contours
         Imgproc.findContours(processedMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         // Draw contours
@@ -99,7 +102,7 @@ public class AutoAimPipeline extends OpenCvPipeline {
         return getEccentricity(ellipse) + (getEllipseArea(ellipse) / Imgproc.contourArea(contour));
     }
     private void resetBestEllipse(){
-        bestEllipse = new RotatedRect(new Point(20,30), new Size(5,50),0);
+        bestEllipse = new RotatedRect(new Point(0,0), new Size(5,50),0);
     }
 
     // Methods to return the ball coords
