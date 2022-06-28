@@ -14,17 +14,22 @@ import org.openftc.easyopencv.OpenCvPipeline;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ShippingHubAutoAimPipeline extends OpenCvPipeline {
+public class HubAutoAimPipeline extends OpenCvPipeline {
     // True is normal with the rects and contours, false is the thresholded image
     public boolean outputMode = true;
 
-    // Camera resolution
+    // Camera constants
     private final double cameraWidth = 320;
     private final double cameraHeight = 240;
+    private final double fov = 60;
+    private final double pixelsPerDegreeX = fov/cameraWidth;
 
     // Lower and upper limits for the threshold
     public static Scalar lower = new Scalar(60, 140, 96);
     public static Scalar upper = new Scalar(255, 212, 147);
+
+    private final int maxHeight = (int) (cameraHeight * (1.0/4.0));
+    private final int minHeight = (int) (cameraHeight * 5.0/7.0);
 
     // Mats and things
     private Mat processedMat = new Mat();
@@ -68,6 +73,9 @@ public class ShippingHubAutoAimPipeline extends OpenCvPipeline {
         Imgproc.findContours(processedMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
         // Draw contours
         Imgproc.drawContours(outputMat, contours, -1, contourColor, 1);
+
+        bestRect.points(bestRectPoints); // To stop an npe from happening while trying to draw them if it finds no best rect
+
         // Fit an rect to each contour
         for (int i = 0; i < contours.size(); i++) {
             if (contours.get(i).rows() > 25) { // Check if it's more than 15 to filter out small ones
@@ -81,8 +89,9 @@ public class ShippingHubAutoAimPipeline extends OpenCvPipeline {
                     Imgproc.line(outputMat, rectPoints[j], rectPoints[(j+1) % 4], rectColor, 1);
                 }
 
-                // If this rect scores higher than the best one, make it the best one
-                if (getRectScore(fittedRect[i], contours.get(i)) < bestRectScore) {
+                // If this rect scores higher than the best one and is in the height window, make it the best one
+                //  && (fittedRect[i].center.y > minHeight && fittedRect[i].center.y < maxHeight)
+                if ((getRectScore(fittedRect[i], contours.get(i)) < bestRectScore)&& (fittedRect[i].center.y < minHeight && fittedRect[i].center.y > maxHeight)) {
                     bestRectScore = getRectScore(fittedRect[i], contours.get(i));
                     bestRect = fittedRect[i];
                     fittedRect[i].points(bestRectPoints);
@@ -90,6 +99,9 @@ public class ShippingHubAutoAimPipeline extends OpenCvPipeline {
                 }
             }
         }
+        // Draw height window
+        Imgproc.line(outputMat, new Point(0,maxHeight), new Point(cameraWidth, maxHeight), textColor,1);
+        Imgproc.line(outputMat, new Point(0,minHeight), new Point(cameraWidth, minHeight), textColor,1);
         // Draw the best rect on the viewport
         for (int j = 0; j < 4; j++) {
             Imgproc.line(outputMat, bestRectPoints[j], bestRectPoints[(j+1) % 4], bestRectColor, 1);
@@ -134,5 +146,10 @@ public class ShippingHubAutoAimPipeline extends OpenCvPipeline {
     }
     public double getCorrectedY(){
         return (getRawY() - (cameraHeight/2));
+    }
+
+    // See https://youtu.be/rLwOkAJqImo?t=1828s
+    public double getAngle(){
+        return (getCorrectedX() * pixelsPerDegreeX);
     }
 }
