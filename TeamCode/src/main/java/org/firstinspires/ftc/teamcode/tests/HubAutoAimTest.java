@@ -20,9 +20,9 @@ public class HubAutoAimTest extends LinearOpMode {
 
     TeleopDrive drive = new TeleopDrive();
     PIDArmSystem armSystem = new PIDArmSystem();
+    public static double P = 0.1;
 
     ElapsedTime loopTimer;
-    ElapsedTime turretAngleUpdateTimer;
     @Override
     public void runOpMode() {
         // Init
@@ -36,7 +36,6 @@ public class HubAutoAimTest extends LinearOpMode {
         armSystem.setFourBarAngle(30);
 
         loopTimer = new ElapsedTime();
-        turretAngleUpdateTimer = new ElapsedTime();
         waitForStart();
         // Pre-run
     
@@ -48,7 +47,7 @@ public class HubAutoAimTest extends LinearOpMode {
             drive.driveFieldCentric(gamepad1.left_stick_x, gamepad1.left_stick_y, gamepad1.right_stick_x, gamepad1.right_trigger);
             if (gamepad1.back) drive.resetHeading();
 
-            if (turretAngleUpdateTimer.milliseconds() > 200) armSystem.turretTargetAngle -= (autoAimPipeline.getAngle());
+            armSystem.turretTargetAngle += (autoAimPipeline.getAngle() * P);
 
             armSystem.setTurretAngle(armSystem.turretTargetAngle);
             armSystem.update();

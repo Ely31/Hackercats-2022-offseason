@@ -21,7 +21,7 @@ public class HubAutoAimPipeline extends OpenCvPipeline {
     // Camera constants
     private final double cameraWidth = 320;
     private final double cameraHeight = 240;
-    private final double fov = 60;
+    private final double fov = 42; // Obtained through primitive calibration, kind of concerning how different it is from logitech's specs
     private final double pixelsPerDegreeX = fov/cameraWidth;
 
     // Lower and upper limits for the threshold
@@ -150,6 +150,6 @@ public class HubAutoAimPipeline extends OpenCvPipeline {
 
     // See https://youtu.be/rLwOkAJqImo?t=1828s
     public double getAngle(){
-        return (getCorrectedX() * pixelsPerDegreeX);
+        return -(getCorrectedX() * pixelsPerDegreeX);
     }
 }

@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.hardware.Camera;
 import org.firstinspires.ftc.teamcode.hardware.CapMech;
 import org.firstinspires.ftc.teamcode.hardware.CarouselMech;
 import org.firstinspires.ftc.teamcode.hardware.Deposit;
@@ -16,10 +17,11 @@ import org.firstinspires.ftc.teamcode.hardware.PIDArmSystem;
 import org.firstinspires.ftc.teamcode.hardware.TeleopDrive;
 import org.firstinspires.ftc.teamcode.util.AutoToTele;
 import org.firstinspires.ftc.teamcode.util.TruePress;
+import org.firstinspires.ftc.teamcode.vision.HubAutoAimPipeline;
 
 @Config
 @TeleOp
-public class Teleop extends LinearOpMode {
+public class AutoAimTeleop extends LinearOpMode {
     // Pre-init
 
     TeleopDrive drive = new TeleopDrive();
@@ -28,9 +30,13 @@ public class Teleop extends LinearOpMode {
     PIDArmSystem pidArmSystem = new PIDArmSystem();
     CarouselMech carouselMech = new CarouselMech();
     CapMech capMech = new CapMech();
+    Camera camera = new Camera();
+
+    HubAutoAimPipeline pipeline = new HubAutoAimPipeline();
 
     TruePress fourbarToggleInput = new TruePress();
     TruePress capMechToggleInput = new TruePress();
+    TruePress autoAimToggleInput = new TruePress();
 
     ElapsedTime dumptime = new ElapsedTime(300);
 
@@ -40,11 +46,14 @@ public class Teleop extends LinearOpMode {
     }
     FourBarState fourBarState = FourBarState.RETRACTED;
 
+    boolean autoAim = false;
+    public static double autoAim_P = 0.1;
+
     enum CarouselState {
         RUNNING,
         STOPPED
     }
-    Teleop.CarouselState carouselState = Teleop.CarouselState.STOPPED;
+    AutoAimTeleop.CarouselState carouselState = AutoAimTeleop.CarouselState.STOPPED;
     ElapsedTime carouselAccelTimer = new ElapsedTime();
     public static double carouselAccelRate = 0.015;
 
@@ -64,6 +73,10 @@ public class Teleop extends LinearOpMode {
         pidArmSystem.retract();
         carouselMech.init(hardwareMap);
         capMech.init(hardwareMap);
+        // Camera setup for autoaim
+        camera.init(hardwareMap);
+        camera.webcam.setPipeline(pipeline);
+        FtcDashboard.getInstance().startCameraStream(camera.webcam, 5);
 
         // Enable bulk reads
         for (LynxModule module : hardwareMap.getAll(LynxModule.class)) {
@@ -103,6 +116,8 @@ public class Teleop extends LinearOpMode {
             if (gamepad2.dpad_up) pidArmSystem.editFourbarLevelOffset(0.4); // This number is small because it's added every loop
             if (gamepad2.dpad_down) pidArmSystem.editFourbarLevelOffset(-0.4);
 
+            if (autoAimToggleInput.trueInput(gamepad2.back)) autoAim = !autoAim; // Toggle auto aim
+
             // Four bar control
             switch (fourBarState) { // Gamepad2 A toggles the extended/retracted state of the 4b
                 case RETRACTED:
@@ -110,6 +125,7 @@ public class Teleop extends LinearOpMode {
                     // By default bring the turret to it's last position when extending,
                     // press the left stick to reset it to zero so it doesn't move when you extend
                     if (gamepad2.left_stick_button) pidArmSystem.turretTargetAngle = 0;
+                    if (autoAim) pidArmSystem.turretTargetAngle = -20 * side;
 
                     if (fourbarToggleInput.trueInput(gamepad2.a)) { // Use A to switch states
                     fourBarState = FourBarState.EXTENDED;
@@ -118,7 +134,10 @@ public class Teleop extends LinearOpMode {
                 case EXTENDED:
                     // Run the 4b and turret to their desired positions
                     pidArmSystem.setArmPosition(pidArmSystem.levelToAngle(pidArmSystem.activeLevel), pidArmSystem.turretTargetAngle);
-                    pidArmSystem.turretTargetAngle += (gamepad2.left_trigger- gamepad2.right_trigger)*2.5;
+                    if (autoAim) {
+                        pidArmSystem.turretTargetAngle += (pipeline.getAngle() * autoAim_P);
+                    }
+                    else pidArmSystem.turretTargetAngle += (gamepad2.left_trigger - gamepad2.right_trigger) * 2.5;
 
                     if (gamepad2.left_stick_button) pidArmSystem.turretTargetAngle = 0;
 
@@ -138,10 +157,10 @@ public class Teleop extends LinearOpMode {
             else capMech.closeGripper();
 
             // Carousel mech control
-            // If you're pressing the trigger, set the state to running
+            // If you're pressing a bumper, set the state to running
             // If not, set it to stopped
-            if (gamepad2.left_bumper || gamepad2.right_bumper) carouselState = Teleop.CarouselState.RUNNING;
-            else carouselState = Teleop.CarouselState.STOPPED;
+            if (gamepad2.left_bumper || gamepad2.right_bumper) carouselState = AutoAimTeleop.CarouselState.RUNNING;
+            else carouselState = AutoAimTeleop.CarouselState.STOPPED;
 
             // Fsm and non blocking timers go brrr
             switch (carouselState){
@@ -159,6 +178,8 @@ public class Teleop extends LinearOpMode {
                     carouselMech.setSpeed(0);
                     carouselAccelTimer.reset();
             }
+
+            telemetry.addData("autoaim enabled", autoAim);
 
             if (debug) { // Send data to telemetry for debug purposes if we want to
                 telemetry.addData("4b state", fourBarState);

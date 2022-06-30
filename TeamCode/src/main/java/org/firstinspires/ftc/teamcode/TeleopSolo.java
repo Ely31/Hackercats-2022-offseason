@@ -151,7 +151,7 @@ public class TeleopSolo extends LinearOpMode {
                         carouselMech.MAX_SPEED += carouselAccelRate;
                         carouselAccelTimer.reset();
                     }
-                    carouselMech.setSpeed(gamepad1.left_trigger); // The setSpeed method multiplies input by the max speed
+                    carouselMech.setSpeed(gamepad1.left_trigger * side); // The setSpeed method multiplies input by the max speed
                     break;
                 case STOPPED:
                     carouselMech.MAX_SPEED = 0.20; // Reset max speed to normal after the trigger is released
